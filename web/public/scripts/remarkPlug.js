@@ -150,16 +150,22 @@ $(".scale-eraser").on("click",function () {
 //绘制矩形
 $(".shape-rect").on("click",function () {
     pageObj.postilType=3;
+    $(this).siblings().removeClass("focus");
+    $(this).addClass("focus");
     setMouseCursor();
 })
 //绘制椭圆
 $(".shape-ellipse").on("click",function () {
     pageObj.postilType=4;
+    $(this).siblings().removeClass("focus");
+    $(this).addClass("focus");
     setMouseCursor();
 })
 //绘制箭头
 $(".shape-arrows").on("click",function () {
     pageObj.postilType=5;
+    $(this).siblings().removeClass("focus");
+    $(this).addClass("focus");
     setMouseCursor();
 })
 //复原鼠标样式
@@ -174,7 +180,7 @@ function setMouseCursor () {
     }else if(pageObj.postilType==4){
         $("#remarkCanvas").removeClass().addClass("textCursor");
     }else if(pageObj.postilType==5){
-
+        $("#remarkCanvas").removeClass();
     }else if(pageObj.postilType==6){
         $("#remarkCanvas").removeClass().addClass("eraserCursor");
     }else if(pageObj.postilType==7){
@@ -430,7 +436,7 @@ function shapeDraw_Move(e) {
     remarkContext.strokeStyle=pageObj.Pen.strokeStyle;
     remarkContext.arc(  currentArray[0].x + (Math.abs(currentArray[currentArray.length-1].x-currentArray[0].x) /2),
         currentArray[0].y+ (Math.abs(currentArray[currentArray.length-1].x-currentArray[0].x) /2),
-        currentArray[currentArray.length-1].x-currentArray[0].x, 0,2*Math.PI);
+        Math.abs(currentArray[currentArray.length-1].x-currentArray[0].x), 0,2*Math.PI);
     remarkContext.closePath();
     remarkContext.stroke();
 }
@@ -787,11 +793,16 @@ function saveRemarkImg() {
         if(item.data==null||item.data.length<=0)return true;
         var currentArray=item.data;
         bjContext.beginPath();
-        bjContext.lineWidth=pageObj.Pen.lineWidth;
+        bjContext.lineWidth=pageObj.Pen.lineWidth*2;
         bjContext.strokeStyle=pageObj.Pen.strokeStyle;
-        bjContext.arc(  getX(currentArray[0].ratioX,bjCanvas) + (Math.abs( getX( currentArray[currentArray.length-1].ratioX-currentArray[0].ratioX,bjCanvas)) /2),
-            getY(currentArray[0].ratioY,bjCanvas)+ (Math.abs(getX(currentArray[currentArray.length-1].ratioX-currentArray[0].ratioX,bjCanvas)) /2),
-            getX( currentArray[currentArray.length-1].ratioX-currentArray[0].ratioX,bjCanvas), 0,2*Math.PI);
+        currentArray[0].x=getX(currentArray[0].ratioX,bjCanvas);
+        currentArray[0].y=getY(currentArray[0].ratioY,bjCanvas);
+        currentArray[currentArray.length-1].x=getX(currentArray[currentArray.length-1].ratioX,bjCanvas);
+
+        bjContext.arc(  currentArray[0].x + (Math.abs(currentArray[currentArray.length-1].x-currentArray[0].x) /2),
+            currentArray[0].y+ (Math.abs(currentArray[currentArray.length-1].x-currentArray[0].x) /2),
+            Math.abs(currentArray[currentArray.length-1].x-currentArray[0].x), 0,2*Math.PI);
+
         bjContext.closePath();
         bjContext.stroke();
     })
@@ -801,8 +812,8 @@ function saveRemarkImg() {
         var currentArray=item.data;
         currentArray[0].x=getX(currentArray[0].ratioX,bjCanvas);
         currentArray[0].y=getY(currentArray[0].ratioY,bjCanvas);
-        currentArray[currentArray.length-1].x=getX(currentArray[0].ratioX,bjCanvas);
-        currentArray[currentArray.length-1].y=getY(currentArray[0].ratioY,bjCanvas);
+        currentArray[currentArray.length-1].x=getX(currentArray[currentArray.length-1].ratioX,bjCanvas);
+        currentArray[currentArray.length-1].y=getY(currentArray[currentArray.length-1].ratioY,bjCanvas);
         drawArrows(currentArray,bjContext);
     })
     bjContext.save();
