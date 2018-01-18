@@ -5,19 +5,17 @@ var bjCanvas = document.getElementById("bjCanvas");
 var remarkContext = remarkCanvas.getContext("2d");
 var bjContext = bjCanvas.getContext("2d");
 var $remarkCanvas = $("#remarkCanvas");
+var $meetImg=$("#meetImg");
+var $postilContentBox=$(".postilContent-box");
 var pageObj = {
     imgw : 2479 //图片的最大宽度（原始图片）
     ,imgh : 3508 //图片的最大高度（原始图片）
     ,scaleW:595  //图片缩放宽度 ，默认为 A4 像素大小
     ,scaleH:842  //图片缩放高度 ，默认为 A4 像素大小
     ,postilType:1//1 ：手写标注 2 ： 文字批注 3：矩形 4：椭圆 5：箭头 6：橡皮擦 7：拖拽快捷 8:放大快捷
-    ,handPostilXYArray : [] //保存手写批注的坐标
+    ,postilPointArray:[]// 保存批注坐标
     ,textPostilXYArrary:[]//保存绘制当前文字批注的坐标
-    ,anewPostilXYArrary:[]//保存 图片与批注合并时 绘制文字批注的坐标
     ,dragXYArray:[]// 保存 拖拽坐标
-    ,drawRectXYArray:[]//保存 矩形绘制坐标
-    ,drawShapeXYArray:[]//保存 椭圆绘制坐标
-    ,drawArrowsXYArray:[]// 保存 箭头绘制坐标
     ,rectImgData:null
     ,Pen : {
         fillStyle: "#000000"//指定 填充颜色
@@ -38,11 +36,11 @@ $(".body-right-box").on("click", "li", function () {
     saveRemarkImg();
     $(this).siblings().removeClass("focus");
     $(this).addClass("focus");
-    $("#meetImg").attr("src", $(this).find("img").attr("src"));
+    $meetImg.attr("src", $(this).find("img").attr("src"));
     clearCanvas(remarkContext);
 });
 //鼠标滚动事件
-$(".postilContent-box").on("mousewheel", function (event) {
+$postilContentBox.on("mousewheel", function (event) {
     if(pageObj.ctrlStatus){
         mousewheelScale(event);
     }else{
@@ -62,7 +60,7 @@ function mousewheelScale(event) {
 //图片 翻页 上一页 下一页
 function imgPaging($this,event) {
     //判断是否滚动到底部或顶部
-    var meetImgH=$("#meetImg").height();
+    var meetImgH=$meetImg.height();
     var postilContentH=$this.height();
     if(meetImgH>postilContentH){
         var postilContentScrollH=$this.scrollTop();
@@ -135,11 +133,10 @@ $(".scale-small").on("click",function () {
 $(".scale-reload").on("click",function () {
     //清楚当前批注信息
     clearCanvas(remarkContext);
-    pageObj.handPostilXYArray = [];
-    pageObj.anewPostilXYArrary=[];
+    pageObj.postilPointArray=[];
     //获取图片
     var imgurl="/GB/LK/ODM/PdfToImg/"+_fileviewguid+"/"+$(".body-right-box li.focus").attr("pageNum")+".jpg";
-    $("#meetImg").attr("src",imgurl);
+    $meetImg.attr("src",imgurl);
     $(".body-right-box li.focus img").attr("src",imgurl);
 })
 //橡皮擦
@@ -172,23 +169,23 @@ $(".shape-arrows").on("click",function () {
 function setMouseCursor () {
     //复原鼠标样式
     if(pageObj.postilType==1){
-        $("#remarkCanvas").removeClass().addClass("handCursor");
+        $remarkCanvas.removeClass().addClass("handCursor");
     }else if(pageObj.postilType==2){
-        $("#remarkCanvas").removeClass().addClass("textCursor");
+        $remarkCanvas.removeClass().addClass("textCursor");
     }else if(pageObj.postilType==3){
-        $("#remarkCanvas").removeClass().addClass("textCursor");
+        $remarkCanvas.removeClass().addClass("textCursor");
     }else if(pageObj.postilType==4){
-        $("#remarkCanvas").removeClass().addClass("textCursor");
+        $remarkCanvas.removeClass().addClass("textCursor");
     }else if(pageObj.postilType==5){
-        $("#remarkCanvas").removeClass();
+        $remarkCanvas.removeClass();
     }else if(pageObj.postilType==6){
-        $("#remarkCanvas").removeClass().addClass("eraserCursor");
+        $remarkCanvas.removeClass().addClass("eraserCursor");
     }else if(pageObj.postilType==7){
-        $("#remarkCanvas").removeClass().addClass("dragCursor");
+        $remarkCanvas.removeClass().addClass("dragCursor");
     }else if(pageObj.postilType==8){
-        $("#remarkCanvas").removeClass().addClass("scaleCursor");
+        $remarkCanvas.removeClass().addClass("scaleCursor");
     }else{
-        $("#remarkCanvas").removeClass();
+        $remarkCanvas.removeClass();
     }
 }
 //缩放 快捷键
@@ -225,13 +222,13 @@ function  postilScale() {
     var scaleW=pageObj.scaleW*pageObj.scale;
     saveRemarkImg();//保存一次
     //重新加载当前批注区域的图片
-    $("#meetImg").attr("src",$(".body-right-box li.focus img").attr("src"));
+    $meetImg.attr("src",$(".body-right-box li.focus img").attr("src"));
     setScaleWH(scaleW,scaleH);
 }
 //设置图片和canvas的宽高
 function  setScaleWH(scaleW,scaleH) {
     //设置图片和canvas 的样式
-    $("#meetImg").css({  width: scaleW ,height:scaleH });
+    $meetImg.css({  width: scaleW ,height:scaleH });
     $remarkCanvas.css({  width: scaleW ,height:scaleH });
     remarkCanvas.width=scaleW;
     remarkCanvas.height=scaleH;
@@ -319,9 +316,11 @@ $remarkCanvas.on({
 function arrowsDraw_Down(e) {
     if(pageObj.isStart )return;
     pageObj.isStart=true;
-    var x = e.pageX - remarkCanvas.offsetLeft+$(".postilContent-box").scrollLeft(),
-        y =  e.pageY-42+$(".postilContent-box").scrollTop();
-    pageObj.drawArrowsXYArray.push({ "index":pageObj.drawArrowsXYArray.length,"data": [{"x":x,"y":y,"ratioX":setX(x,remarkCanvas),"ratioY":setY(y,remarkCanvas) }]});
+    var x = e.pageX - remarkCanvas.offsetLeft+$postilContentBox.scrollLeft(),
+        y =  e.pageY-42+$postilContentBox.scrollTop();
+    pageObj.postilPointArray.push({ "index":pageObj.postilPointArray.length,"postilType":5,
+        "data": [{"x":x,"y":y,"ratioX":setX(x,remarkCanvas),"ratioY":setY(y,remarkCanvas) }]
+    });
     pageObj.rectImgData= remarkContext.getImageData(0,0, remarkCanvas.width,remarkCanvas.height);
 }
 function arrowsDraw_Move(e) {
@@ -329,9 +328,9 @@ function arrowsDraw_Move(e) {
 function arrowsDraw_Up(e) {
     if(!pageObj.isStart)return;
     pageObj.isStart=false;
-    var x = e.pageX - remarkCanvas.offsetLeft+$(".postilContent-box").scrollLeft(),
-        y =  e.pageY-42+$(".postilContent-box").scrollTop();
-    var currentArray=pageObj.drawArrowsXYArray[pageObj.drawArrowsXYArray.length-1].data;
+    var x = e.pageX - remarkCanvas.offsetLeft+$postilContentBox.scrollLeft(),
+        y =  e.pageY-42+$postilContentBox.scrollTop();
+    var currentArray=pageObj.postilPointArray[pageObj.postilPointArray.length-1].data;
     currentArray.push({"x":x,"y":y,"ratioX":setX(x,remarkCanvas),"ratioY":setY(y,remarkCanvas) });
     drawArrows(currentArray,remarkContext);
 }
@@ -383,53 +382,28 @@ function drawArrows(currentArray,canvasContext) {
     canvasContext.lineTo(polygonVertex[10], polygonVertex[11]);
     canvasContext.closePath();
     canvasContext.fill();
+    canvasContext.stroke();
 }
 //绘制椭圆
 function shapeDraw_Down(e) {
     if(pageObj.isStart )return;
     pageObj.isStart=true;
-    var x = e.pageX - remarkCanvas.offsetLeft+$(".postilContent-box").scrollLeft(),
-        y =  e.pageY-42+$(".postilContent-box").scrollTop();
-    pageObj.drawShapeXYArray.push({ "index":pageObj.drawShapeXYArray.length,"data": [{"x":x,"y":y,"ratioX":setX(x,remarkCanvas),"ratioY":setY(y,remarkCanvas) }]});
+    var x = e.pageX - remarkCanvas.offsetLeft+$postilContentBox.scrollLeft(),
+        y =  e.pageY-42+$postilContentBox.scrollTop();
+    pageObj.postilPointArray.push({ "index":pageObj.postilPointArray.length,"postilType":4,
+        "data": [{"x":x,"y":y,"ratioX":setX(x,remarkCanvas),"ratioY":setY(y,remarkCanvas),"strokeStyle":pageObj.Pen.strokeStyle,"lineWidth": pageObj.Pen.lineWidth }]
+    });
     pageObj.rectImgData= remarkContext.getImageData(0,0, remarkCanvas.width,remarkCanvas.height);
 }
 function shapeDraw_Move(e) {
     if(!pageObj.isStart)return;
-    var x = e.pageX - remarkCanvas.offsetLeft+$(".postilContent-box").scrollLeft(),
-        y =  e.pageY-42+$(".postilContent-box").scrollTop();
-    if(pageObj.drawShapeXYArray.length>=2){
-        // var clearSX=0;
-        // var clearSY=0;
-        // var clearW=0;
-        // var clearH=0;
-        // var diffX=pageObj.drawRectXYArray[pageObj.drawRectXYArray.length-1].x-pageObj.drawRectXYArray[0].x;
-        // var diffY=pageObj.drawRectXYArray[pageObj.drawRectXYArray.length-1].y-pageObj.drawRectXYArray[0].y;
-        // remarkContext.beginPath();
-        // if(diffX>0){
-        //     //向右的滑动
-        //     clearSX=pageObj.drawRectXYArray[0].x-1;
-        //     clearW=pageObj.drawRectXYArray[pageObj.drawRectXYArray.length-1].x-pageObj.drawRectXYArray[0].x+2;
-        // }else{
-        //     //向左的滑动
-        //     clearSX=pageObj.drawRectXYArray[0].x+1;
-        //     clearW=pageObj.drawRectXYArray[pageObj.drawRectXYArray.length-1].x-pageObj.drawRectXYArray[0].x-2;
-        // }
-        // if(diffY>0){
-        //     //向下
-        //     clearSY=pageObj.drawRectXYArray[0].y-1;
-        //     clearH=pageObj.drawRectXYArray[pageObj.drawRectXYArray.length-1].y-pageObj.drawRectXYArray[0].y+2;
-        // }else{
-        //     //向上
-        //     clearSY=pageObj.drawRectXYArray[0].y+1;
-        //     clearH=pageObj.drawRectXYArray[pageObj.drawRectXYArray.length-1].y-pageObj.drawRectXYArray[0].y-2;
-        // }
-        // remarkContext.clearRect(clearSX,clearSY,clearW,clearH);
-    }
+    var x = e.pageX - remarkCanvas.offsetLeft+$postilContentBox.scrollLeft(),
+        y =  e.pageY-42+$postilContentBox.scrollTop();
     clearCanvas(remarkContext);
     remarkContext.putImageData(pageObj.rectImgData,0,0);
     remarkContext.save();
-    var currentArray=pageObj.drawShapeXYArray[pageObj.drawShapeXYArray.length-1].data;
-    currentArray.push(  {"x":x,"y":y,"ratioX":setX(x,remarkCanvas),"ratioY":setY(y,remarkCanvas) }  );
+    var currentArray=pageObj.postilPointArray[pageObj.postilPointArray.length-1].data;
+    currentArray.push(  {"x":x,"y":y,"ratioX":setX(x,remarkCanvas),"ratioY":setY(y,remarkCanvas) ,"strokeStyle":pageObj.Pen.strokeStyle,"lineWidth": pageObj.Pen.lineWidth }  );
 
     remarkContext.beginPath();
     remarkContext.lineWidth=pageObj.Pen.lineWidth;
@@ -452,48 +426,22 @@ function shapeDraw_Leave(e) {
 function rectDraw_Down(e) {
     if(pageObj.isStart )return;
     pageObj.isStart=true;
-    var x = e.pageX - remarkCanvas.offsetLeft+$(".postilContent-box").scrollLeft(),
-        y =  e.pageY-42+$(".postilContent-box").scrollTop();
-    pageObj.drawRectXYArray.push({ "index":pageObj.drawRectXYArray.length,"data": [{"x":x,"y":y,"ratioX":setX(x,remarkCanvas),"ratioY":setY(y,remarkCanvas) }]});
+    var x = e.pageX - remarkCanvas.offsetLeft+$postilContentBox.scrollLeft(),
+        y =  e.pageY-42+$postilContentBox.scrollTop();
+    pageObj.postilPointArray.push({ "index":pageObj.postilPointArray.length,"postilType":3,
+        "data": [{"x":x,"y":y,"ratioX":setX(x,remarkCanvas),"ratioY":setY(y,remarkCanvas) ,"strokeStyle":pageObj.Pen.strokeStyle,"lineWidth": pageObj.Pen.lineWidth}]
+    });
     pageObj.rectImgData= remarkContext.getImageData(0,0, remarkCanvas.width,remarkCanvas.height);
 }
 function rectDraw_Move(e) {
     if(!pageObj.isStart)return;
-    var x = e.pageX - remarkCanvas.offsetLeft+$(".postilContent-box").scrollLeft(),
-        y =  e.pageY-42+$(".postilContent-box").scrollTop();
-    if(pageObj.drawRectXYArray.length>=2){
-        // var clearSX=0;
-        // var clearSY=0;
-        // var clearW=0;
-        // var clearH=0;
-        // var diffX=pageObj.drawRectXYArray[pageObj.drawRectXYArray.length-1].x-pageObj.drawRectXYArray[0].x;
-        // var diffY=pageObj.drawRectXYArray[pageObj.drawRectXYArray.length-1].y-pageObj.drawRectXYArray[0].y;
-        // remarkContext.beginPath();
-        // if(diffX>0){
-        //     //向右的滑动
-        //     clearSX=pageObj.drawRectXYArray[0].x-1;
-        //     clearW=pageObj.drawRectXYArray[pageObj.drawRectXYArray.length-1].x-pageObj.drawRectXYArray[0].x+2;
-        // }else{
-        //     //向左的滑动
-        //     clearSX=pageObj.drawRectXYArray[0].x+1;
-        //     clearW=pageObj.drawRectXYArray[pageObj.drawRectXYArray.length-1].x-pageObj.drawRectXYArray[0].x-2;
-        // }
-        // if(diffY>0){
-        //     //向下
-        //     clearSY=pageObj.drawRectXYArray[0].y-1;
-        //     clearH=pageObj.drawRectXYArray[pageObj.drawRectXYArray.length-1].y-pageObj.drawRectXYArray[0].y+2;
-        // }else{
-        //     //向上
-        //     clearSY=pageObj.drawRectXYArray[0].y+1;
-        //     clearH=pageObj.drawRectXYArray[pageObj.drawRectXYArray.length-1].y-pageObj.drawRectXYArray[0].y-2;
-        // }
-        // remarkContext.clearRect(clearSX,clearSY,clearW,clearH);
-    }
+    var x = e.pageX - remarkCanvas.offsetLeft+$postilContentBox.scrollLeft(),
+        y =  e.pageY-42+$postilContentBox.scrollTop();
     clearCanvas(remarkContext);
     remarkContext.putImageData(pageObj.rectImgData,0,0);
     remarkContext.save();
-    var currentArray=pageObj.drawRectXYArray[pageObj.drawRectXYArray.length-1].data;
-    currentArray.push(  {"x":x,"y":y,"ratioX":setX(x,remarkCanvas),"ratioY":setY(y,remarkCanvas) }  );
+    var currentArray=pageObj.postilPointArray[pageObj.postilPointArray.length-1].data;
+    currentArray.push(  {"x":x,"y":y,"ratioX":setX(x,remarkCanvas),"ratioY":setY(y,remarkCanvas),"strokeStyle":pageObj.Pen.strokeStyle,"lineWidth": pageObj.Pen.lineWidth }  );
 
     remarkContext.beginPath();
     remarkContext.lineWidth=pageObj.Pen.lineWidth;
@@ -523,9 +471,12 @@ function eraser_Up(e) {
 }
 function eraser_Move(e) {
     if(!pageObj.isStart)return;
-    var x = e.pageX - remarkCanvas.offsetLeft+$(".postilContent-box").scrollLeft(),
-        y =  e.pageY-42+$(".postilContent-box").scrollTop();
+    var x = e.pageX - remarkCanvas.offsetLeft+$postilContentBox.scrollLeft(),
+        y =  e.pageY-42+$postilContentBox.scrollTop();
     remarkContext.clearRect(x, y,15,15);
+    pageObj.postilPointArray.push({ "index":pageObj.postilPointArray.length,"postilType":6,
+        "data": [{"x":x,"y":y,"ratioX":setX(x,remarkCanvas),"ratioY":setY(y,remarkCanvas),"clearW":setX(15,remarkCanvas) ,"clearH" :setY(15,remarkCanvas)}]
+    });
 }
 function eraser_Leave(e) {
     if(!pageObj.isStart)return;
@@ -537,7 +488,7 @@ function  drag_Down(e) {
     pageObj.isStart=true;
     pageObj.dragXYArray=[];
     var x = e.pageX - remarkCanvas.offsetLeft,
-        y =  e.pageY-42+$(".postilContent-box").scrollTop();
+        y =  e.pageY-42+$postilContentBox.scrollTop();
     pageObj.dragXYArray.push({ "x":x,"y":y});
 }
 function  drag_Up(e) {
@@ -553,25 +504,24 @@ function  drag_Leave(e) {
     pageObj.isStart=false;
 }
 function dragScroll(e) {
-    var $postilContent=$(".postilContent-box");
     var x = e.pageX - remarkCanvas.offsetLeft,
-        y =  e.pageY-42+$postilContent.scrollTop();
+        y =  e.pageY-42+$postilContentBox.scrollTop();
     pageObj.dragXYArray.push({ "x":x,"y":y});
     //判断是否 有滚动条 ， 只有存在滚动条才能拖拽
-    var meetImgH=$("#meetImg").height();
-    var meetImgW=$("#meetImg").width();
-    var postilContentH=$postilContent.height();
-    var postilContentW=$postilContent.width();
+    var meetImgH=$meetImg.height();
+    var meetImgW=$meetImg.width();
+    var postilContentH=$postilContentBox.height();
+    var postilContentW=$postilContentBox.width();
     if(meetImgH>postilContentH){
         //起始坐标 - 终点坐标
         var ah=pageObj.dragXYArray[pageObj.dragXYArray.length-2].y-pageObj.dragXYArray[pageObj.dragXYArray.length-1].y;
         //存在Y轴滚动条 ，计算需要向上或向下滚动的距离
         if(ah>0){
             //向上拖拽，向下滚动
-            $postilContent.scrollTop(  $postilContent.scrollTop()+ Math.abs(ah) );
+            $postilContentBox.scrollTop(  $postilContentBox.scrollTop()+ Math.abs(ah) );
         }else{
             //向下拖拽，向上滚动
-            $postilContent.scrollTop(  $postilContent.scrollTop()- Math.abs(ah) );
+            $postilContentBox.scrollTop(  $postilContentBox.scrollTop()- Math.abs(ah) );
         }
     }
     if(meetImgW>postilContentW){
@@ -580,10 +530,10 @@ function dragScroll(e) {
         //存在X轴滚动条 ，计算需要向左或向右滚动的距离
         if(aw>0){
             //向左拖拽，向 右滚动
-            $postilContent.scrollLeft(  $postilContent.scrollLeft()+ Math.abs(aw) );
+            $postilContentBox.scrollLeft(  $postilContentBox.scrollLeft()+ Math.abs(aw) );
         }else{
             //向右拖拽，向左滚动
-            $postilContent.scrollLeft(  $postilContent.scrollLeft()-Math.abs(aw)  );
+            $postilContentBox.scrollLeft(  $postilContentBox.scrollLeft()-Math.abs(aw)  );
         }
     }
 }
@@ -591,29 +541,29 @@ function dragScroll(e) {
 function handPostil_Down(e) {
     //计算鼠标指针在文档中的位置
     pageObj.isStart = true;
-    var x = e.pageX - remarkCanvas.offsetLeft+$(".postilContent-box").scrollLeft(),
-        y =  e.pageY-42+$(".postilContent-box").scrollTop();
+    var x = e.pageX - remarkCanvas.offsetLeft+$postilContentBox.scrollLeft(),
+        y =  e.pageY-42+$postilContentBox.scrollTop();
     remarkContext.beginPath();
     remarkContext.lineCap = pageObj.Pen.lineCap;
     remarkContext.lineJoin = pageObj.Pen.lineJoin;
     remarkContext.strokeStyle = pageObj.Pen.strokeStyle;
     remarkContext.lineWidth = pageObj.Pen.lineWidth;
     remarkContext.moveTo(x, y);
-    x = setX(x, remarkCanvas);
-    y = setY(y, remarkCanvas);
-    pageObj.handPostilXYArray.push({ index: pageObj.handPostilXYArray.length, data: [{ "x": x, "y": y, "color": pageObj.Pen.strokeStyle, "line": pageObj.Pen.lineWidth}] });
+    pageObj.postilPointArray.push({ index: pageObj.postilPointArray.length,"postilType":1,
+        data: [{ "x": x, "y": y, "ratioX":setX(x, remarkCanvas), "ratioY":setY(y, remarkCanvas),  "strokeStyle": pageObj.Pen.strokeStyle, "lineWidth": pageObj.Pen.lineWidth}]
+    });
 }
 //
 function  handPostil_Move(e) {
     if (!pageObj.isStart) return;
-    var x = e.pageX - remarkCanvas.offsetLeft+$(".postilContent-box").scrollLeft(),
-        y = e.pageY-42+$(".postilContent-box").scrollTop();
+    var x = e.pageX - remarkCanvas.offsetLeft+$postilContentBox.scrollLeft(),
+        y = e.pageY-42+$postilContentBox.scrollTop();
     //记录坐标参数，方便数据存储
     remarkContext.lineTo(x, y);
     remarkContext.stroke();
-    x = setX(x, remarkCanvas);
-    y = setY(y, remarkCanvas);
-    pageObj.handPostilXYArray[pageObj.handPostilXYArray.length - 1].data.push({ "x": x, "y": y, "color": pageObj.Pen.strokeStyle, "line": pageObj.Pen.lineWidth });
+    pageObj.postilPointArray[pageObj.postilPointArray.length - 1].data.push({
+        "x": x, "y": y,"ratioX":setX(x, remarkCanvas), "ratioY":setY(y, remarkCanvas),  "strokeStyle": pageObj.Pen.strokeStyle, "lineWidth": pageObj.Pen.lineWidth
+    });
 }
 //
 function  handPostil_Up(e) {
@@ -647,8 +597,8 @@ function  textPostil_Leave(e) {
 }
 //将鼠标坐标点推入数组中保存
 function pushTotextPostilXYArrary(e) {
-    var x = e.pageX - remarkCanvas.offsetLeft+$(".postilContent-box").scrollLeft(),
-        y =  e.pageY-42+$(".postilContent-box").scrollTop();
+    var x = e.pageX - remarkCanvas.offsetLeft+$postilContentBox.scrollLeft(),
+        y =  e.pageY-42+$postilContentBox.scrollTop();
     var ratioX = setX(x, remarkCanvas);
     var ratioY = setY(y, remarkCanvas);
     pageObj.textPostilXYArrary.push({"x": x, "y": y,"mx":e.pageX,"my":e.pageY,"ratioX":ratioX,"ratioY":ratioY});
@@ -671,8 +621,7 @@ function buildTextarea() {
         pageObj.isStart = false;
         if(!txt)return;
         var par={
-            "index":pageObj.anewPostilXYArrary.length
-            ,"fillStyle":pageObj.Pen.fillStyle
+            "fillStyle":pageObj.Pen.fillStyle
             ,"maxWidth":pageObj.textPostilXYArrary[1].x-pageObj.textPostilXYArrary[0].x
             ,"ratioMaxWidth": setX(pageObj.textPostilXYArrary[1].x-pageObj.textPostilXYArrary[0].x,remarkCanvas)
             ,"initX":pageObj.textPostilXYArrary[0].x
@@ -686,7 +635,10 @@ function buildTextarea() {
         };
         drawText( remarkContext,par);
         par.lineHeight=setY(16,remarkCanvas);
-        pageObj.anewPostilXYArrary.push(par);
+
+        pageObj.postilPointArray.push({ "index":pageObj.postilPointArray.length,"postilType":2,
+            "data": par
+        });
     });
     $(".dCanvas").append(postilContent_box);
     postilContent_box.focus();
@@ -697,6 +649,7 @@ function  drawText(canvasContext,par) {
     canvasContext.textAlign = 'left';
     canvasContext.textBaseline = 'top';
     canvasContext.fillStyle =par.fillStyle ;
+    canvasContext.beginPath();
     var lastSubStrIndex= 0;
     var lineWidth=0;
     var lineHeight=par.lineHeight;
@@ -715,6 +668,8 @@ function  drawText(canvasContext,par) {
             canvasContext.fillText(par.txt.substring(lastSubStrIndex,i+1),initX,initY);
         }
     }
+    canvasContext.closePath();
+    canvasContext.stroke();
 }
 //切换右侧缩略图
 function changeThumb(selectLi) {
@@ -722,7 +677,7 @@ function changeThumb(selectLi) {
         saveRemarkImg();
         $(".body-right-box li").removeClass("focus");
         selectLi.addClass("focus");
-        $("#meetImg").attr("src", selectLi.find("img").attr("src"));
+        $meetImg.attr("src", selectLi.find("img").attr("src"));
         clearCanvas(remarkContext);
         var index = selectLi.index();
         var hg_li = selectLi.height();
@@ -734,94 +689,93 @@ function changeThumb(selectLi) {
         } else {
             $(".body-right-box").scrollTop(0);
         }
+
     }
 }
 //保存 合并标注和图片为一张图
 function saveRemarkImg() {
-    if ( (pageObj.handPostilXYArray == undefined || pageObj.handPostilXYArray.length <= 0 ) &&
-        (pageObj.anewPostilXYArrary == undefined || pageObj.anewPostilXYArrary.length <= 0) &&
-        (pageObj.drawRectXYArray == undefined || pageObj.drawRectXYArray.length <= 0)&&
-        (pageObj.drawRectXYArray == undefined || pageObj.drawShapeXYArray.length <= 0)&&
-        (pageObj.drawRectXYArray == undefined || pageObj.drawArrowsXYArray.length <= 0))  return;
+    if ( (pageObj.postilPointArray == undefined || pageObj.postilPointArray.length <= 0 ) )  return;
     var img = document.getElementById("meetImg");
-    bjContext.restore();
+     bjContext.restore();
     clearCanvas(bjContext);
+    // bjContext.fillStyle = "#fff";
+    // bjContext.fillRect(0, 0, bjCanvas.width, bjCanvas.height);
     bjContext.drawImage(img, 0, 0, bjCanvas.width, bjCanvas.height);
-    //绘制 手写批注
-    $.each(pageObj.handPostilXYArray, function (index, item) {
-        bjContext.beginPath();
-        $.each(item.data, function (index1, item2) {
-            var x = getX(item2.x, bjCanvas);
-            var y = getY(item2.y, bjCanvas);
-            if (index1 == 0) {
-                bjContext.lineCap = pageObj.Pen.lineCap;
-                bjContext.lineJoin = pageObj.Pen.lineJoin;
-                bjContext.strokeStyle = item2.color;
-                bjContext.lineWidth = item2.line*6;
-                bjContext.moveTo(x, y);
-            } else {
-                bjContext.lineTo(x, y);
-            }
-        });
-        bjContext.stroke();
-    })
-    //绘制 文字批注
-    $.each(pageObj.anewPostilXYArrary,function (index,item) {
-        item.initX=getX(item.ratioX, bjCanvas);
-        item.initY=getY(item.ratioY, bjCanvas);
-        item.maxWidth=getX(item.ratioMaxWidth,bjCanvas);
-        item.lineHeight=getY(item.lineHeight,bjCanvas)  ;
-        var fontSize=getX(item.fontSize,bjCanvas);
-        item.font=fontSize+"px  arial";
-        drawText( bjContext ,item);
-    })
-    //绘制 矩形
-    $.each(pageObj.drawRectXYArray,function (index,item) {
+    $.each(pageObj.postilPointArray,function (index,item) {
         if(item.data==null||item.data.length<=0)return true;
-        var currentArray=item.data;
-        bjContext.beginPath();
-        bjContext.lineWidth=pageObj.Pen.lineWidth*2;
-        bjContext.strokeStyle=pageObj.Pen.strokeStyle;
-        bjContext.strokeRect(getX(currentArray[0].ratioX,bjCanvas)  ,getY(currentArray[0].ratioY,bjCanvas),
-          getX(currentArray[currentArray.length-1].ratioX-currentArray[0].ratioX,bjCanvas)  ,
-            getY(currentArray[currentArray.length-1].ratioY-currentArray[0].ratioY,bjCanvas) );
-        bjContext.closePath();
-        bjContext.stroke();
-    })
-    //绘制 椭圆
-    $.each(pageObj.drawShapeXYArray,function (index,item) {
-        if(item.data==null||item.data.length<=0)return true;
-        var currentArray=item.data;
-        bjContext.beginPath();
-        bjContext.lineWidth=pageObj.Pen.lineWidth*2;
-        bjContext.strokeStyle=pageObj.Pen.strokeStyle;
-        currentArray[0].x=getX(currentArray[0].ratioX,bjCanvas);
-        currentArray[0].y=getY(currentArray[0].ratioY,bjCanvas);
-        currentArray[currentArray.length-1].x=getX(currentArray[currentArray.length-1].ratioX,bjCanvas);
-
-        bjContext.arc(  currentArray[0].x + (Math.abs(currentArray[currentArray.length-1].x-currentArray[0].x) /2),
-            currentArray[0].y+ (Math.abs(currentArray[currentArray.length-1].x-currentArray[0].x) /2),
-            Math.abs(currentArray[currentArray.length-1].x-currentArray[0].x), 0,2*Math.PI);
-
-        bjContext.closePath();
-        bjContext.stroke();
-    })
-    //绘制箭头
-    $.each(pageObj.drawArrowsXYArray,function (index,item) {
-        if(item.data==null||item.data.length<=0)return true;
-        var currentArray=item.data;
-        currentArray[0].x=getX(currentArray[0].ratioX,bjCanvas);
-        currentArray[0].y=getY(currentArray[0].ratioY,bjCanvas);
-        currentArray[currentArray.length-1].x=getX(currentArray[currentArray.length-1].ratioX,bjCanvas);
-        currentArray[currentArray.length-1].y=getY(currentArray[currentArray.length-1].ratioY,bjCanvas);
-        drawArrows(currentArray,bjContext);
+        if(item.postilType==1){
+            //绘制 手写批注
+             bjContext.beginPath();
+            $.each(item.data, function (index1, item2) {
+                var x = getX(item2.ratioX, bjCanvas);
+                var y = getY(item2.ratioY, bjCanvas);
+                if (index1 == 0) {
+                    bjContext.lineCap = pageObj.Pen.lineCap;
+                    bjContext.lineJoin = pageObj.Pen.lineJoin;
+                    bjContext.strokeStyle = item2.strokeStyle;
+                    bjContext.lineWidth = item2.lineWidth*6;
+                    bjContext.moveTo(x, y);
+                } else {
+                    bjContext.lineTo(x, y);
+                }
+            });
+            bjContext.stroke();
+        }else if(item.postilType==2){
+            //绘制 文字批注
+            item.data.initX=getX(item.data.ratioX, bjCanvas);
+            item.data.initY=getY(item.data.ratioY, bjCanvas);
+            item.data.maxWidth=getX(item.data.ratioMaxWidth,bjCanvas);
+            item.data.lineHeight=getY(item.data.lineHeight,bjCanvas)  ;
+            var fontSize=getX(item.data.fontSize,bjCanvas);
+            item.data.font=fontSize+"px  arial";
+            drawText( bjContext ,item.data);
+        }else if(item.postilType==3){
+            //绘制 矩形
+            var currentArray=item.data;
+            bjContext.beginPath();
+            bjContext.lineWidth=currentArray[0].lineWidth*2;
+            bjContext.strokeStyle=currentArray[0].strokeStyle;
+            bjContext.strokeRect(getX(currentArray[0].ratioX,bjCanvas)  ,getY(currentArray[0].ratioY,bjCanvas),
+                getX(currentArray[currentArray.length-1].ratioX-currentArray[0].ratioX,bjCanvas)  ,
+                getY(currentArray[currentArray.length-1].ratioY-currentArray[0].ratioY,bjCanvas) );
+            bjContext.closePath();
+            bjContext.stroke();
+        }else if(item.postilType==4){
+            //绘制 椭圆
+            var currentArray=item.data;
+            bjContext.beginPath();
+            bjContext.lineWidth=currentArray[0].lineWidth*2;
+            bjContext.strokeStyle=currentArray[0].strokeStyle;
+            currentArray[0].x=getX(currentArray[0].ratioX,bjCanvas);
+            currentArray[0].y=getY(currentArray[0].ratioY,bjCanvas);
+            currentArray[currentArray.length-1].x=getX(currentArray[currentArray.length-1].ratioX,bjCanvas);
+            bjContext.arc(  currentArray[0].x + (Math.abs(currentArray[currentArray.length-1].x-currentArray[0].x) /2),
+                currentArray[0].y+ (Math.abs(currentArray[currentArray.length-1].x-currentArray[0].x) /2),
+                Math.abs(currentArray[currentArray.length-1].x-currentArray[0].x), 0,2*Math.PI);
+            bjContext.closePath();
+            bjContext.stroke();
+        }else if(item.postilType==5){
+            //绘制箭头
+            var currentArray=item.data;
+            currentArray[0].x=getX(currentArray[0].ratioX,bjCanvas);
+            currentArray[0].y=getY(currentArray[0].ratioY,bjCanvas);
+            currentArray[currentArray.length-1].x=getX(currentArray[currentArray.length-1].ratioX,bjCanvas);
+            currentArray[currentArray.length-1].y=getY(currentArray[currentArray.length-1].ratioY,bjCanvas);
+            drawArrows(currentArray,bjContext);
+        }else if(item.postilType==6){
+            //绘制橡皮擦 ，clearRect 方法会将清除区域变成透明，toDataURL 保存为jpg的时候透明区域会变成黑色
+            // 所以这里采用 fillRect 的方式 变相清除画布。
+            var currentArray=item.data;
+            currentArray[0].x=getX(currentArray[0].ratioX,bjCanvas);
+            currentArray[0].y=getY(currentArray[0].ratioY,bjCanvas);
+            currentArray[0].clearW=getX(currentArray[0].clearW,bjCanvas);
+            currentArray[0].clearH=getY(currentArray[0].clearH,bjCanvas);
+            bjContext.fillStyle="#FFFFFF";
+            bjContext.fillRect(currentArray[0].x,currentArray[0].y, currentArray[0].clearH,currentArray[0].clearH );
+        }
     })
     bjContext.save();
-    pageObj.handPostilXYArray = [];
-    pageObj.anewPostilXYArrary=[];
-    pageObj.drawRectXYArray=[];
-    pageObj.drawShapeXYArray=[];
-    pageObj.drawArrowsXYArray=[];
+    pageObj.postilPointArray=[];
     var base64img = bjCanvas.toDataURL("image/jpeg", 1);
     $(".body-right-box li.focus img").attr("src", base64img);
 }
@@ -896,10 +850,10 @@ function loadData() {
             if (res == null || res == undefined || res.Data == undefined || res.Data.length == 0) return;
             $.each(res.Data, function (index, item) {
                 if (index == 0) {
-                    $("#meetImg").attr("src", item);
-                    $(".body-right-box ul").append("<li class='focus' pageNum='FilePage_"+(index+1)+"'><img src=\"" + item + "\"></li>");
+                    $meetImg.attr("src", item);
+                    $(".body-right-box ul").append("<li class='focus' pageNum='FilePage_"+(index+1)+"'><img src=\"" + item + "\"><span class=\"page-number\">" + (index + 1) + "</span></li>");
                 } else {
-                    $(".body-right-box ul").append("<li pageNum='FilePage_"+(index+1)+"'><img src=\"" + item + "\"></li>");
+                    $(".body-right-box ul").append("<li pageNum='FilePage_"+(index+1)+"'><img src=\"" + item + "\"><span class=\"page-number\">" + (index + 1) + "</span></li>");
                 }
             });
         }
